@@ -24,6 +24,7 @@ fetch(new URL(document.head.baseURI).origin + new URL(document.head.baseURI).pat
             resourcesBaseUrl: new URL(document.head.baseURI).origin + new URL(document.head.baseURI).pathname + 'resources/',
         })
         const chart = lc.ChartXY({
+            legend: { visible: false },
             theme: Themes[new URLSearchParams(window.location.search).get('theme') || 'darkGold'] || undefined,
         })
         const theme = chart.getTheme()
@@ -54,13 +55,15 @@ fetch(new URL(document.head.baseURI).origin + new URL(document.head.baseURI).pat
 
             // Series for displaying "old" data.
             const seriesRight = chart
-                .addPointLineAreaSeries({
-                    dataPattern: 'ProgressiveX',
+                .addLineSeries({
                     automaticColorIndex: iCh,
                     yAxis: axisY,
+                    schema: {
+                        x: { pattern: 'progressive' },
+                        y: { pattern: null },
+                    },
                 })
                 .setName(info.name)
-                .setAreaFillStyle(emptyFill)
                 .setStrokeStyle((stroke) => stroke.setThickness(2))
                 .setEffect(false)
                 .setMaxSampleCount(dataRateHz * xViewMs)
@@ -78,22 +81,29 @@ fetch(new URL(document.head.baseURI).origin + new URL(document.head.baseURI).pat
 
             // Series for displaying new data.
             const seriesLeft = chart
-                .addPointLineAreaSeries({
-                    dataPattern: 'ProgressiveX',
+                .addLineSeries({
                     automaticColorIndex: iCh,
                     yAxis: axisY,
+                    schema: {
+                        x: { pattern: 'progressive' },
+                        y: { pattern: null },
+                    },
                 })
                 .setName(info.name)
-                .setAreaFillStyle(emptyFill)
                 .setStrokeStyle((stroke) => stroke.setThickness(2))
                 .setEffect(false)
                 .setMaxSampleCount(dataRateHz * xViewMs)
 
             const seriesHighlightLastPoints = chart
-                .addPointLineAreaSeries({ dataPattern: null, yAxis: axisY })
+                .addPointSeries({
+                    yAxis: axisY,
+                    schema: {
+                        x: { pattern: null },
+                        y: { pattern: null },
+                    },
+                })
                 .setPointFillStyle(new SolidFill({ color: theme.examples.highlightPointColor }))
                 .setPointSize(5)
-                .setStrokeStyle(emptyLine)
                 .setEffect(false)
                 .setCursorEnabled(false)
 
@@ -175,7 +185,7 @@ fetch(new URL(document.head.baseURI).origin + new URL(document.head.baseURI).pat
                         }
                     }
                     // Finish current sweep.
-                    channel.seriesLeft.add(dataCurrentSweep)
+                    channel.seriesLeft.appendJSON(dataCurrentSweep)
                     // Swap left and right series.
                     const nextLeft = channel.seriesRight
                     const nextRight = channel.seriesLeft
@@ -186,15 +196,15 @@ fetch(new URL(document.head.baseURI).origin + new URL(document.head.baseURI).pat
                     channel.seriesLeft.setDrawOrder({ seriesDrawOrderIndex: 2 })
                     // Start sweeping from left again.
                     channel.seriesLeft.clear()
-                    channel.seriesLeft.add(dataNextSweep)
+                    channel.seriesLeft.appendJSON(dataNextSweep)
                 } else {
                     // Append data to left.
-                    channel.seriesLeft.add(newDataPointsSweeping)
+                    channel.seriesLeft.appendJSON(newDataPointsSweeping)
                 }
 
                 // Highlight last data point.
                 const highlightPoints = [newDataPointsSweeping[newDataPointsSweeping.length - 1]]
-                channel.seriesHighlightLastPoints.clear().add(highlightPoints)
+                channel.seriesHighlightLastPoints.clear().appendJSON(highlightPoints)
             }
 
             // Move overlays of old data to right locations.
